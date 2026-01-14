@@ -9,6 +9,7 @@ use smithay::{
     },
     output::{Mode, Output, PhysicalProperties, Subpixel},
     reexports::calloop::EventLoop,
+    reexports::calloop::{channel, PostAction},
     utils::{Rectangle, Transform},
 };
 
@@ -17,6 +18,7 @@ use crate::Smallvil;
 pub fn init_winit(
     event_loop: &mut EventLoop<Smallvil>,
     state: &mut Smallvil,
+    redraw_receiver: channel::Channel<()>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (mut backend, winit) = winit::init()?;
 
@@ -43,6 +45,16 @@ pub fn init_winit(
 
     let mut damage_tracker = OutputDamageTracker::from_output(&output);
 
+    event_loop.handle().insert_source(redraw_receiver, move |event, _, _| {
+        match event {
+            channel::Event::Msg(()) => {
+                backend.window().request_redraw();
+            }
+            channel::Event::Closed => return Ok(PostAction::Remove),
+        }
+        Ok(PostAction::Continue)
+    })?;
+
     event_loop.handle().insert_source(winit, move |event, _, state| {
         match event {
             WinitEvent::Resized { size, .. } => {
@@ -55,6 +67,7 @@ pub fn init_winit(
                     None,
                     None,
                 );
+                state.request_redraw();
             }
             WinitEvent::Input(event) => state.process_input_event(event),
             WinitEvent::Redraw => {
@@ -95,9 +108,6 @@ pub fn init_winit(
                 state.space.refresh();
                 state.popups.cleanup();
                 let _ = state.display_handle.flush_clients();
-
-                // Ask for redraw to schedule new frame.
-                backend.window().request_redraw();
             }
             WinitEvent::CloseRequested => {
                 state.loop_signal.stop();
@@ -105,6 +115,8 @@ pub fn init_winit(
             _ => (),
         };
     })?;
+
+    state.request_redraw();
 
     Ok(())
 }
