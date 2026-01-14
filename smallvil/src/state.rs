@@ -4,7 +4,15 @@ use smithay::{
     desktop::{PopupManager, Space, Window, WindowSurfaceType},
     input::{Seat, SeatState},
     reexports::{
-        calloop::{generic::Generic, EventLoop, Interest, LoopSignal, Mode, PostAction},
+        calloop::{
+            channel::Sender,
+            generic::Generic,
+            EventLoop,
+            Interest,
+            LoopSignal,
+            Mode,
+            PostAction,
+        },
         wayland_server::{
             backend::{ClientData, ClientId, DisconnectReason},
             protocol::wl_surface::WlSurface,
@@ -40,10 +48,11 @@ pub struct Smallvil {
     pub popups: PopupManager,
 
     pub seat: Seat<Self>,
+    pub redraw_sender: Sender<()>,
 }
 
 impl Smallvil {
-    pub fn new(event_loop: &mut EventLoop<Self>, display: Display<Self>) -> Self {
+    pub fn new(event_loop: &mut EventLoop<Self>, display: Display<Self>, redraw_sender: Sender<()>) -> Self {
         let start_time = std::time::Instant::now();
 
         let dh = display.handle();
@@ -104,6 +113,7 @@ impl Smallvil {
             data_device_state,
             popups,
             seat,
+            redraw_sender,
         }
     }
 
@@ -152,6 +162,10 @@ impl Smallvil {
                 .surface_under(pos - location.to_f64(), WindowSurfaceType::ALL)
                 .map(|(s, p)| (s, (p + location).to_f64()))
         })
+    }
+
+    pub fn request_redraw(&self) {
+        let _ = self.redraw_sender.send(());
     }
 }
 

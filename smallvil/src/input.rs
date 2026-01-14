@@ -140,5 +140,7 @@ impl Smallvil {
             }
             _ => {}
         }
+
+        self.request_redraw();
     }
 }

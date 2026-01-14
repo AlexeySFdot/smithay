@@ -7,7 +7,7 @@ mod input;
 mod state;
 mod winit;
 
-use smithay::reexports::{calloop::EventLoop, wayland_server::Display};
+use smithay::reexports::{calloop::{channel, EventLoop}, wayland_server::Display};
 pub use state::Smallvil;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -17,10 +17,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let display: Display<Smallvil> = Display::new()?;
 
-    let mut state = Smallvil::new(&mut event_loop, display);
+    let (redraw_sender, redraw_receiver) = channel::channel();
+    let mut state = Smallvil::new(&mut event_loop, display, redraw_sender);
 
     // Open a Wayland/X11 window for our nested compositor
-    crate::winit::init_winit(&mut event_loop, &mut state)?;
+    crate::winit::init_winit(&mut event_loop, &mut state, redraw_receiver)?;
 
     // Set WAYLAND_DISPLAY to our socket name, so child processes connect to Smallvil rather
     // than the host compositor
