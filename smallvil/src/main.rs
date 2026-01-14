@@ -7,10 +7,7 @@ mod input;
 mod state;
 mod winit;
 
-use smithay::reexports::{
-    calloop::{channel, EventLoop},
-    wayland_server::Display,
-};
+use smithay::reexports::{calloop::{channel, EventLoop}, wayland_server::Display};
 pub use state::Smallvil;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
